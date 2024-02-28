@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Location Map</title>
+    <style>
+        #map {
+            width: 40%;
+            height: 400px;
+            margin: 0 auto; /* Center the map horizontally */
+            padding: 20px; /* Add padding around the map */
+        }
+    </style>
+</head>
+<body>
+    <h1>User Location Map</h1>
+    <div id="map"></div>
+
+    <script>
+        function initMap() {
+    var mapOptions = {
+        zoom: 12,
+        center: { lat: 0, lng: 0 } // Default center (0, 0)
+    };
+
+    var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+    var iconA = 'https://maps.google.com/mapfiles/kml/paddle/A.png'; // Icon for marker A
+    var iconB = 'https://maps.google.com/mapfiles/kml/paddle/B.png'; // Icon for marker B
+
+    var markerA;
+    var markerB;
+
+    // Try HTML5 geolocation
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var pos = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+
+            // Create a marker for the detected position (Marker A)
+            markerA = new google.maps.Marker({
+                position: pos,
+                map: map,
+                icon: iconA,
+                title: 'Initial Position (Marker A)'
+            });
+
+            // Create a marker for Marker B
+            markerB = new google.maps.Marker({
+                position: calculateDestination(pos, 5, 0), // 5 kilometers, 0 degrees (north)
+                map: map,
+                icon: iconB,
+                title: 'Marker B'
+            });
+
+            map.setCenter(pos);
+
+            // Update Marker B position towards Marker A every second
+            setInterval(function() {
+                var newPosition = calculateNewPosition(markerB.getPosition(), markerA.getPosition(), 0.001);
+                markerB.setPosition(newPosition);
+            }, 1000); // Update every 1 second
+        }, function() {
+            handleLocationError(true, map.getCenter());
+        });
+    } else {
+        // Browser doesn't support Geolocation
+        handleLocationError(false, map.getCenter());
+    }
+}
+
+// Function to calculate the new position towards a target position
+function calculateNewPosition(currentPosition, targetPosition, speed) {
+    var latDiff = targetPosition.lat() - currentPosition.lat();
+    var lngDiff = targetPosition.lng() - currentPosition.lng();
+
+    var distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+
+    if (distance < speed) {
+        return targetPosition;
+    }
+
+    var latStep = (latDiff / distance) * speed;
+    var lngStep = (lngDiff / distance) * speed;
+
+    var newLat = currentPosition.lat() + latStep;
+    var newLng = currentPosition.lng() + lngStep;
+
+    return new google.maps.LatLng(newLat, newLng);
+}
+
+// Function to calculate destination point given distance and bearing
+function calculateDestination(start, distance, bearing) {
+    var earthRadius = 6371; // Radius of the Earth in kilometers
+    var angularDistance = distance / earthRadius;
+    var bearingRadians = (bearing * Math.PI) / 180;
+
+    var startLatRadians = (start.lat * Math.PI) / 180;
+    var startLngRadians = (start.lng * Math.PI) / 180;
+
+    var endLatRadians = Math.asin(
+        Math.sin(startLatRadians) * Math.cos(angularDistance) +
+        Math.cos(startLatRadians) * Math.sin(angularDistance) * Math.cos(bearingRadians)
+    );
+
+    var endLngRadians = startLngRadians + Math.atan2(
+        Math.sin(bearingRadians) * Math.sin(angularDistance) * Math.cos(startLatRadians),
+        Math.cos(angularDistance) - Math.sin(startLatRadians) * Math.sin(endLatRadians)
+    );
+
+    var endLat = (endLatRadians * 180) / Math.PI;
+    var endLng = (endLngRadians * 180) / Math.PI;
+
+    return new google.maps.LatLng(endLat, endLng);
+}
+
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyANyEAM-XJv4DlL4h1yJlo0VwHBMMqDvHc&callback=initMap" async defer></script>
+</body>
+</html>
